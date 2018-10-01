@@ -1,5 +1,4 @@
-import pygame
-import numpy as np
+import pygame, numpy as np
 
 # Constants for the board representation.
 
@@ -17,7 +16,7 @@ WHITE_QUEEN = 2
 WHITE_BISHOP = 3
 WHITE_KNIGHT = 4
 WHITE_ROOK = 5
-WHITE_PAWN = 6
+WHITE_PAWN = 6  
 
 BLACK_KING = 11
 BLACK_QUEEN = 12
@@ -66,7 +65,7 @@ class Game:
         
         # Pieces are selected, but did not press one
         if self.selected and not e in self.valid_moves:
-            print "deselecting"
+            print("deselecting")
             self.selected = None
             self.valid_moves = None
             self.draw_board()
@@ -79,15 +78,31 @@ class Game:
             self.valid_moves = None 
             self.draw_board()
             
+        # TODO: switch/case
         # TODO: pos is king
-
+        elif self.board[e[0], e[1]] % 10 == 1:
+            self.selected = e
+            self.valid_moves = self.get_king_moves(e)
+            self.draw_board()
         # TODO: pos is Queen
+        elif self.board[e[0], e[1]] % 10 == 2:
+            self.selected = e
+            self.valid_moves = self.get_queen_moves(e)
+            self.draw_board()
 
         # TODO: pos is Bishop
+        elif self.board[e[0],e[1]] % 10 == 3:
+            self.selected = e
+            self.valid_moves = self.get_bishop_moves(e)
+            self.draw_board()
 
         # TODO: pos is Knight
 
         # TODO: pos is Rook
+        elif self.board[e[0], e[1]] % 10 == 5:
+            self.selected = e
+            self.valid_moves = self.get_rook_moves(e)
+            self.draw_board()
 
         # Pos is Pawn
         elif self.board[e[0], e[1]] % 10 == 6:
@@ -121,6 +136,7 @@ class Game:
         # Draw moves if a piece has been selected.
         if self.selected:
             for move in self.valid_moves:
+                print("move: " + str(move))
                 move_color = None
                 if self.board[move[0], move[1]] == 0:
                     move_color = YELLOW
@@ -145,22 +161,46 @@ class Game:
 
     def validate_position(self, pos):
         if 0 <= pos[0] <= 7 and 0 <= pos[1] <= 7:
+            print("TRUE for pos: " + str(pos))
             return True
+            print("FALSE for pos: " + str(pos))
         return False
 
 # Get valid moves for each piece.
 
-    #TODO
+    #TODO: have to consider tiles that are "under threat" and prevent those.
     def get_king_moves(self, pos):
-        pass
+        valid_moves = []
+        for i in range(pos[0] - 1, pos[0] + 2):
+            for j in range(pos[1] - 1, pos[1] + 2):
+                print("i: " + str(i) + " j: " + str(j))
+                if self.validate_position([i, j]) and not self.board[i, j] % 10 == 1:
+                    if self.board[pos[0], pos[1]] < 10 and not 0 < self.board[i, j] < 10 or \
+                        self.board[pos[0], pos[1]] > 10 and not self.board[i, j] > 10:
+                            valid_moves.append([i, j])
+        return valid_moves
 
     #TODO
     def get_queen_moves(self, pos):
-        pass
+        valid_moves = []
+        valid_moves += self.line_helper(pos, -1, 0, -1, 0)
+        valid_moves += self.line_helper(pos, 1, 0, 1, 0)
+        valid_moves += self.line_helper(pos, 0, -1, 0, -1)
+        valid_moves += self.line_helper(pos, 0, 1, 0, 1)
+        valid_moves += self.line_helper(pos, -1, -1, -1, -1)
+        valid_moves += self.line_helper(pos, -1, 1, -1, 1)
+        valid_moves += self.line_helper(pos, 1, -1, 1, -1)
+        valid_moves += self.line_helper(pos, 1, 1,1, 1)
+        return valid_moves
 
     #TODO
     def get_bishop_moves(self, pos):
-        pass
+        valid_moves = []
+        valid_moves += self.line_helper(pos, -1, -1, -1, -1)
+        valid_moves += self.line_helper(pos, -1, 1, -1, 1)
+        valid_moves += self.line_helper(pos, 1, -1, 1, -1)
+        valid_moves += self.line_helper(pos, 1, 1,1, 1)
+        return valid_moves
 
     #TODO
     def get_knight_moves(self, pos):
@@ -168,7 +208,25 @@ class Game:
 
     #TODO
     def get_rook_moves(self, pos):
-        pass
+        valid_moves = []
+        valid_moves += self.line_helper(pos, -1, 0, -1, 0)
+        valid_moves += self.line_helper(pos, 1, 0, 1, 0)
+        valid_moves += self.line_helper(pos, 0, -1, 0, -1)
+        valid_moves += self.line_helper(pos, 0, 1, 0, 1)
+        print("ROOK valid moves: " + str(valid_moves))
+        return valid_moves
+
+    def line_helper(self, pos, i_offset, j_offset, i_inc, j_inc):
+        valid_moves = []
+        while self.validate_position([pos[0] + i_offset, pos[1] + j_offset]) \
+            and self.board[pos[0] + i_offset, pos[1] + j_offset] == 0:
+            valid_moves.append([pos[0] + i_offset, pos[1] + j_offset])
+            i_offset += i_inc
+            j_offset += j_inc
+        if self.validate_position([pos[0] + i_offset, pos[1] + j_offset]):
+            if abs(self.board[pos[0] + i_offset, pos[1] + j_offset]) - abs(self.board[pos[0], pos[1]]) > 5:
+                valid_moves.append([pos[0] + i_offset, pos[1] + j_offset])
+        return valid_moves
 
     #TODO
     def get_pawn_moves(self, pos):
@@ -188,17 +246,21 @@ class Game:
             for i in (-1, 1):
                 attacks.append([pos[0] - 1, pos[1] + i])
 
-        print ("attacks: " + str(attacks))
         # Validate moves
         for move in moves:
             if self.validate_position(move) and self.board[move[0], move[1]] == 0:
                 valid_moves.append(move)
         for attack in attacks:
             if self.validate_position(attack):
-                if self.selected < 10 and self.board[attack[0], attack[1]] > 10:
+                if self.board[self.selected[0], self.selected[1]] < 10:
+                    if self.board[attack[0], attack[1]] > 10:
+                        print("first if")
+                        valid_moves.append(attack)
+                elif 0 < self.board[attack[0], attack[1]] < 10:
+                    print("second if")
+                    print("selected = " + str(self.selected))
                     valid_moves.append(attack)
-                elif self.selected > 10 and 0 < self.board[attack[0], attack[1]] < 10:
-                    valid_moves.append(attack)
+        print("PAWN valid moves: " + str(valid_moves))
         return valid_moves
 
 
