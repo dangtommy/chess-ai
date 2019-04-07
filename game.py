@@ -9,6 +9,10 @@ BLUE = [0, 0, 255]
 GREEN = [0, 255, 0]
 YELLOW = [255, 255, 0]
 
+# Positions
+BOARD_X = 512
+BOARD_Y = 512
+
 class Game:
     def __init__(self):
         pygame.display.init()
@@ -18,6 +22,7 @@ class Game:
         self.selected_piece = None
         self.king_checked = False
         self.advancing_pawn = False
+        self.valid_moves = []
 
     # Handle inputs to the game board.
     def handle_key_event(self, e):
@@ -25,30 +30,36 @@ class Game:
         # Pieces are selected, but did not press one.
         if self.selected_piece and not e in self.valid_moves:
             print("deselecting")
-            self.selected = None
-            self.valid_moves = None
+            self.selected_piece = None
+            self.valid_moves = []
             self.draw_board()
 
         # Advancing pawn.
         elif self.advancing_pawn:
+            print('advancing pawn')
             self.advancing_pawn = False
 
         # Position is a move.
         elif self.selected_piece and e in self.valid_moves:
+            print('moving')
             if self.king_checked:
                 pass
             else:
-                self.move_piece(self.get_piece(self.selected_piece[0],
+                self.move_piece(self.board.get_piece(self.selected_piece[0],
                     self.selected_piece[1]), self.selected_piece[0],
                     self.selected_piece[1], e[0], e[1])
                 self.selected_piece = None
-                self.valid_moves = None
+                self.valid_moves = []
                 self.draw_board()
 
         # Display piece's valid moves.
         else:
+            print('display valid moves')
+            print('valid moves before: ', self.valid_moves)
             self.selected_piece = e
-            valid_moves = self.board.get_valid_moves_at_square(e[0], e[1])
+            print(str(self.board.board))
+            self.valid_moves = self.board.get_valid_moves_at_square(e[0], e[1])
+            print('valid moves: ', self.valid_moves)
             self.draw_board()
 
     # Game loop logic.
@@ -69,25 +80,48 @@ class Game:
                     tile = [event.pos[1] // 64, event.pos[0] // 64]
                     self.handle_key_event(tile)
 
+                # Show threat board.
+                if event.type == pygame.KEYDOWN and \
+                    event.key == pygame.K_LEFT:
+                    tb = self.board.get_threat_board()
+                    print('threat board: ')
+                    for row in range(0, 8):
+                        for col in range(0, 8):
+                            print(tb[row][col])
+                            
     # Draws the board based on the current board array state.
     def draw_board(self):
         # Place the pieces on the board.
         # Draw the white/black tiles on the board.
         for i in range(0, 8):
             for j in range(0, 8):
-                if not self.board[i, j] == 0:
-                    if self.board[i, j] < 10: # White
-                        pygame.draw.rect(self.display, BLUE,
+                if not self.board.get_piece(i, j) == 0:
+                    if self.board.get_piece(i, j) < 10: # White
+                        pygame.draw.rect(self.display, BLUE, \
                             [j * 64, i * 64, 64, 64], 0)
                     else:   # Black
-                        pygame.draw.rect(self.display, GREEN,
+                        pygame.draw.rect(self.display, GREEN, \
                             [j * 64, i * 64, 64, 64], 0)
                 else: # Draw empty tile.
                     tile_color = WHITE
                     if not (i+j) % 2 == 0:
                         tile_color = BLACK
-                    pygame.draw.rect(self.display, tile_color, [j * 64,
+                    pygame.draw.rect(self.display, tile_color, [j * 64, \
                         i * 64, 64, 64], 0)
+
+        # Draw moves if a piece has been selected.
+        if self.selected_piece and len(self.valid_moves) > 0:
+            for move in self.valid_moves:
+                print("move: ", str(move))
+                move_color = None
+                if self.board.get_piece(move[0], move[1]) == 0:
+                    move_color = YELLOW
+                else:
+                    move_color = RED
+                pygame.draw.rect(self.display, move_color, [move[1] * 64, \
+                    move[0] * 64, 64, 64], 0)
+        # Update board surface.
+        pygame.display.update()
 
 	# Make a move. Check for special moves here.
     def move_piece(self, piece, orig_x, orig_y, new_x, new_y):

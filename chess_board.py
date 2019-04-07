@@ -36,8 +36,8 @@ BLACK_KNIGHT = 14
 BLACK_ROOK = 15
 BLACK_PAWN = 16
 BLACK_FIRST_PAWN = 17
-BLACK_FIRST_KING = 8
-BLACK_FIRST_ROOK = 9
+BLACK_FIRST_KING = 18
+BLACK_FIRST_ROOK = 19
 
 # Size of board
 
@@ -57,6 +57,7 @@ class Board:
 		self.board_start = 1
 		self.init_board()
 		print(str(self.board))
+		self.threat_board = [[[] for j in range(0, 8)] for i in range(0, 8)]
 		self.threat_board = self.update_threats()
 
 	# Initialize board to beginning state
@@ -66,15 +67,15 @@ class Board:
 		# 1 - play as white
 		if not self.board_start:
 			# White pieces
-			self.board[0, 4] = WHITE_FIRST_KING
-			self.board[0, 3] = WHITE_QUEEN
+			self.board[0, 3] = WHITE_FIRST_KING
+			self.board[0, 4] = WHITE_QUEEN
 			self.board[0, 2] = self.board[0, 5] = WHITE_BISHOP
 			self.board[0, 1] = self.board[0, 6] = WHITE_KNIGHT
 			self.board[0, 0] = self.board[0, 7] = WHITE_FIRST_ROOK
 			self.board[1,:] = WHITE_PAWN
 			# Black pieces
-			self.board[7, 4] = BLACK_FIRST_KING
-			self.board[7, 3] = BLACK_QUEEN
+			self.board[7, 3] = BLACK_FIRST_KING
+			self.board[7, 4] = BLACK_QUEEN
 			self.board[7, 2] = self.board[7,5] = BLACK_BISHOP
 			self.board[7, 1] = self.board[7,6] = BLACK_KNIGHT
 			self.board[7, 0] = self.board[7,7] = BLACK_FIRST_ROOK
@@ -154,6 +155,7 @@ class Board:
 		for i in range (0, 8):
 			for j in range(0, 8):
 				threats = self.get_valid_moves_at_square(i, j)
+				print('threat: ', threats)
 				piece_and_threats.append([self.board[i, j], threats])
 
 		# Reset threat board
@@ -164,13 +166,15 @@ class Board:
 		for x in piece_and_threats:
 			if not x[1] == None:
 				for square in x[1]:
+					print('threat arr: ', self.threat_board[square[0]][square[1]])
 					self.threat_board[square[0]][square[1]].append(x[0])
 
 		# Print threat board
-		print("Printing threat board")
-		for row in range(0, 8):
-			for col in range(0, 8):
-				print(self.threat_board[row][col])
+		#print("Printing threat board")
+		#for row in range(0, 8):
+		#	for col in range(0, 8):
+		#		print(self.threat_board[row][col])
+		return self.threat_board
 
 	# Make sure the position is valid for movement.
 	def validate_position(self, pos):
@@ -186,17 +190,15 @@ class Board:
 
 		# Continue in this direction while empty squares, legal,
 		# and have yet to hit our max desired distance.
-		while x != i_max and y != j_max and \
-			self.validate_position([x, y]) and \
+		while x != i_max and y != j_max and self.validate_position([x, y]) and \
 			self.board[x, y] == 0:
 			valid_moves.append([x, y])
 			x += i_inc
 			y += j_inc
 
 		# Check if we've hit enemy piece at the end.
-		if 	attack_end and \
-			self.validate_position([x, y]) and \
-			(int)(self.board[x, y] / 10) != \
+		if 	attack_end and self.validate_position([x, y]) and \
+			not self.board[x, y] == 0 and not (int)(self.board[x, y] / 10) == \
 			(int)(self.board[pos[0], pos[1]] / 10):
 			valid_moves.append([x, y])
 
@@ -223,6 +225,9 @@ class Board:
 	def get_piece(self, x, y):
 		return self.board[x, y]
 
+	# Return threat board.
+	def get_threat_board(self):
+		return self.threat_board
 	'''
 		Movement functionality for each type of piece
 	'''
@@ -233,55 +238,56 @@ class Board:
 		x = pos[0]
 		y = pos[1]
 
-		# Only add legal squares that aren't threatened
+		# Only add legal squares that aren't threatened and aren't friendly.
 		for i in range(x-1, x+2):
 			for j in range(y-1, y+2):
 				moves.append([i, j])
 		for move in moves:
 			if self.validate_position(move) and \
-				len(self.threat_board[move[0]][move[1]]) == 0:
-					valid_moves += move
+				((int) (self.board[x][y] / 10) != \
+				(int)(self.board[move[0]][move[1]] / 10) or \
+				self.board[move[0]][move[1]] == 0):
+					threats = self.threat_board[move[0]][move[1]]
+					real_threat = [threat for threat in \
+						self.threat_board[move[0]][move[1]] if \
+						not (int)(threat / 10) == (int)(self.board[x, y])]
+					if len(real_threat) == 0:
+						valid_moves.append(move)
 
 		# Castling
-		if self.board[x, y] == 8:
+		if self.board[x, y] % 10 == 8:
 			if self.board_start: # White start
-				if (int) (self.board[x, y] / 10) == 0: # White
-					NUM_LEFT = 3
-					NUM_RIGHT = 2
-				else: # Black
-					NUM_LEFT = 2
-					NUM_RIGHT = 3
+				NUM_LEFT = 3
+				NUM_RIGHT = 2
 			else: # Black start
-				if (int) (self.board[x, y] / 10) == 0: # White
-					NUM_LEFT = 2
-					NUM_RIGHT = 3
-				else: # Black
-					NUM_LEFT = 3
-					NUM_RIGHT = 2
+				NUM_LEFT = 2
+				NUM_RIGHT = 3
 
 			# Left castling
 			i = 1
 			while i < NUM_LEFT + 1:
 				if (not self.board[x, y-i] == 0) or \
-				not len(self.threat_board[x, y-i]) == 0:
+				not len(self.threat_board[x][y-i]) == 0:
 					break
+				i += 1
 			if i == NUM_LEFT + 1:
-				if (int) (self.board[x, y-i] / 10) == \
-					(int) (self.board[x, y] / 10) and \
-					(int) (self.board[x, y-i] % 10) == 9:
-					valid_moves += [x, y-i+1]
-
+				if ((int) (self.board[x, y-i] / 10) == \
+					(int) (self.board[x, y] / 10)) and \
+					((int) (self.board[x, y-i] % 10) == 9):
+						valid_moves.append([x, y - i + NUM_LEFT-1])
 			# Right castling
 			i = 1
 			while i < NUM_RIGHT + 1:
 				if not self.board[x, y+i] == 0 or \
-				not len(self.threat_board[x, y+i]) == 0:
+				not len(self.threat_board[x][y+i]) == 0:
 					break
+				i += 1
 			if i == NUM_RIGHT + 1:
-				if (int) (self.board[x, y+i] / 10) == \
-					(int) (self.board[x, y] / 10) and \
-					(int) (self.board[x, y-i] % 10) == 9:
-					valid_moves += [x, y+i-1]
+				if ((int) (self.board[x, y+i] / 10) == \
+					(int) (self.board[x, y] / 10)) and \
+					((int) (self.board[x, y+i] % 10) == 9):
+					valid_moves.append([x, y + i - NUM_RIGHT+1])
+		return valid_moves
 
 	def get_queen_moves(self, pos):
 		valid_moves = []
