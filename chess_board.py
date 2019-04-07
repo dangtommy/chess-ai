@@ -1,4 +1,4 @@
-import pygame, numpy as np
+import numpy as np
 
 '''
 
@@ -46,12 +46,12 @@ BOARD_Y = 512
 
 '''
 
-Board class 
+Board class
 
 '''
 
 class Board:
-	
+
 	def __init__(self):
 		self.board = np.zeros([8, 8])
 		self.board_start = 1
@@ -99,6 +99,7 @@ class Board:
 	def update_square(self, x, y, val):
 		self.board[x, y] = val;
 
+	# TODO: Move this to a controller class?
 	# Make a move. Check for special moves here.
 	def move_piece(self, piece, orig_x, orig_y, new_x, new_y):
 
@@ -111,7 +112,8 @@ class Board:
 				update_square(orig_x, orig_y, 0)
 				update_square(new_x, new_y, piece-7)
 				# Rook update
-				update_square(new_x + offset, new_y, self.board[new_x - offset, new_y] - 4)
+				update_square(new_x + offset, new_y, \
+					self.board[new_x - offset, new_y] - 4)
 				update_square(new_x - offset, new_y, 0) # Old rook place
 			else:
 				update_square(orig_x, orig_y, 0)
@@ -119,18 +121,31 @@ class Board:
 
 		# Handle rook rename if not castling.
 		elif piece % 10 == 9:
-			if 
+			update_square(orig_x, orig_y, 0)
+			update_square(new_x, new_y, piece - 4)
 
 		# Handle special pawn behavior.
 		elif piece % 10 == 6:
 			offset = orig_y - new_y
 			if abs(offset) > 1: # First move.
-
+				update_square(orig_x, orig_y, 0)
+				update_square(new_x, new_y, piece + 1)
 			elif new_y == 0 or new_y == 8: # Pawn advancement.
-
+				update_square(orig_x, orig_y, 0)
+				# TODO: Pawn advancement.
+				# Currently just makes queens.
+				new_piece = piece - 4
+				update_square(new_x, new_y, new_piece)
+			else:
+				pass
+		# Handle returning en passant pawn to regular pawn.
+		elif piece % 10 == 7:
+			update_square(orig_x, orig_y, 0)
+			update_square(new_x, new_y, piece - 1)
 		else: # Normal behavior.
 			update_square(orig_x, orig_y, 0)
 			update_square(new_x, new_y, piece)
+
 	# Update threat board.
 	def update_threats(self):
 		piece_and_threats = []
@@ -144,7 +159,7 @@ class Board:
 		# Reset threat board
 		self.threat_board = [[[] for j in range(0, 8)] for i in range(0, 8)]
 
-		# For each of 
+		# For each of
 		# Threat board [x, y] += threatening piece
 		for x in piece_and_threats:
 			if not x[1] == None:
@@ -181,7 +196,8 @@ class Board:
 		# Check if we've hit enemy piece at the end.
 		if 	attack_end and \
 			self.validate_position([x, y]) and \
-			(int)(self.board[x, y] / 10) != (int)(self.board[pos[0], pos[1]] / 10):
+			(int)(self.board[x, y] / 10) != \
+			(int)(self.board[pos[0], pos[1]] / 10):
 			valid_moves.append([x, y])
 
 		return valid_moves
@@ -203,6 +219,9 @@ class Board:
 			valid_moves = self.get_pawn_moves([x, y])
 		return valid_moves
 
+	# Return the value of the piece at the coordinates.
+	def get_piece(self, x, y):
+		return self.board[x, y]
 
 	'''
 		Movement functionality for each type of piece
@@ -247,7 +266,8 @@ class Board:
 				not len(self.threat_board[x, y-i]) == 0:
 					break
 			if i == NUM_LEFT + 1:
-				if (int) (self.board[x, y-i] / 10) == (int) (self.board[x, y] / 10) and \
+				if (int) (self.board[x, y-i] / 10) == \
+					(int) (self.board[x, y] / 10) and \
 					(int) (self.board[x, y-i] % 10) == 9:
 					valid_moves += [x, y-i+1]
 
@@ -258,7 +278,8 @@ class Board:
 				not len(self.threat_board[x, y+i]) == 0:
 					break
 			if i == NUM_RIGHT + 1:
-				if (int) (self.board[x, y+i] / 10) == (int) (self.board[x, y] / 10) and \
+				if (int) (self.board[x, y+i] / 10) == \
+					(int) (self.board[x, y] / 10) and \
 					(int) (self.board[x, y-i] % 10) == 9:
 					valid_moves += [x, y+i-1]
 
@@ -269,7 +290,7 @@ class Board:
 		return valid_moves
 
 	def get_bishop_moves(self, pos):
-		valid_moves = [] 
+		valid_moves = []
 		valid_moves += self.line_helper(pos, 8, 8, 1, 1, 1) 	# bottom right
 		valid_moves += self.line_helper(pos, 8, 8, 1, -1, 1)	# bottom left
 		valid_moves += self.line_helper(pos, 8, 8, -1, 1, 1)	# top right
@@ -286,10 +307,11 @@ class Board:
 		moves.append([pos[0] + 1, pos[1] + 2])
 		moves.append([pos[0] + 2, pos[1] - 1])
 		moves.append([pos[0] + 2, pos[1] + 1])
-		valid_moves = [move for move in moves if (self.validate_position(move) and \
-						(self.board[move[0], move[1]] == 0 or \
-						(int)(self.board[move[0], move[1]] / 10) != 
-						(int)(self.board[pos[0], pos[1]] / 10)))]
+		valid_moves = [move for move in moves if \
+			(self.validate_position(move) and \
+			(self.board[move[0], move[1]] == 0 or \
+			(int)(self.board[move[0], move[1]] / 10) != \
+			(int)(self.board[pos[0], pos[1]] / 10)))]
 		return valid_moves
 
 	def get_rook_moves(self, pos):
@@ -327,13 +349,17 @@ class Board:
 
 		# Initial double move
 		if x == ORIGINAL_ROW:
-			valid_moves += self.line_helper(pos, x + 3*FORWARD_I, 8, FORWARD_I, 0, 0)
+			valid_moves += self.line_helper(pos, x + 3*FORWARD_I, 8,
+				FORWARD_I, 0, 0)
 		else:	# Normal single move
-			valid_moves += self.line_helper(pos, x + 2*FORWARD_I, 8, FORWARD_I, 0, 0)
+			valid_moves += self.line_helper(pos, x + 2*FORWARD_I, 8,
+				FORWARD_I, 0, 0)
 
 		# Check Diagonal Attacks
-		valid_moves += self.line_helper(pos, x + FORWARD_I, y + 1, FORWARD_I, 1, 1)
-		valid_moves += self.line_helper(pos, x + FORWARD_I, y - 1, FORWARD_I, -1, 1)
+		valid_moves += self.line_helper(pos, x + FORWARD_I, y + 1, FORWARD_I,
+			1, 1)
+		valid_moves += self.line_helper(pos, x + FORWARD_I, y - 1, FORWARD_I,
+			-1, 1)
 
 		# En Passant Attack
 		if x == EN_PASSANT_ROW:
