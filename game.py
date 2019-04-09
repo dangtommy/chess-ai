@@ -10,22 +10,38 @@ GREEN = [0, 255, 0]
 YELLOW = [255, 255, 0]
 
 # Positions
-BOARD_X = 512
+BOARD_X = 512 + 256
 BOARD_Y = 512
 
 class Game:
     def __init__(self):
+
+        # Board.
         pygame.display.init()
         self.running = True
         self.display = pygame.display.set_mode([BOARD_X, BOARD_Y])
         self.board = Board()
+
+        # Text - instructions and help messages.
+        pygame.font.init()
+        font = pygame.font.SysFont('Comic Sans MS', 30)
+
+        # Input / game logic variables.
         self.selected_piece = None
         self.king_checked = False
         self.advancing_pawn = False
         self.valid_moves = []
 
+    # TODO: Fix this to give instructions for pawn advancement.
+    def draw_text(self):
+        instructions = pygame.font.render('Press enter to quit game.', 1, WHITE)
+        self.display.blit(instructions, (576, 100))
+
     # Handle inputs to the game board.
     def handle_key_event(self, e):
+
+        if e[0] > 7 or e[1] > 7:
+            return
 
         # Pieces are selected, but did not press one.
         if self.selected_piece and not e in self.valid_moves:
@@ -88,7 +104,7 @@ class Game:
                     for row in range(0, 8):
                         for col in range(0, 8):
                             print(tb[row][col])
-                            
+
     # Draws the board based on the current board array state.
     def draw_board(self):
         # Place the pieces on the board.
@@ -120,6 +136,10 @@ class Game:
                     move_color = RED
                 pygame.draw.rect(self.display, move_color, [move[1] * 64, \
                     move[0] * 64, 64, 64], 0)
+
+        # Draw text.
+        self.draw_text()
+
         # Update board surface.
         pygame.display.update()
 
@@ -151,10 +171,11 @@ class Game:
             if abs(offset) > 1: # First move.
                 self.board.update_square(orig_x, orig_y, 0)
                 self.board.update_square(new_x, new_y, piece + 1)
-            elif new_y == 0 or new_y == 8: # Pawn advancement.
+            elif new_x == 0 or new_x == 7: # Pawn advancement.
                 self.board.update_square(orig_x, orig_y, 0)
                 # TODO: Pawn advancement.
                 # Currently just makes queens.
+                self.draw_advancement_choice()
                 new_piece = piece - 4
                 self.board.update_square(new_x, new_y, new_piece)
             else: # Normal pawn behavior.
@@ -171,16 +192,23 @@ class Game:
 
     # TODO: When pawn advances, draw
     def draw_advancement_choice(self):
+        print('drawing options')
         # Draw options.
         pygame.draw.rect(self.display, YELLOW, [3 * 64, 3 * 64, 64, 64], 0)
         pygame.draw.rect(self.display, YELLOW, [3 * 64, 4 * 64, 64, 64], 0)
         pygame.draw.rect(self.display, YELLOW, [4 * 64, 3 * 64, 64, 64], 0)
         pygame.draw.rect(self.display, YELLOW, [4 * 64, 4 * 64, 64, 64], 0)
+        # Update board surface.
+        pygame.display.update()
 
     # TODO: Determine if checkmate has been reached.
     # Should trigger when King square is threatened.
-    def checked(self):
-        pass
+    def checked(self, pos):
+        for threat in (self.board.get_threat_board())[pos[0]][pos[1]]:
+            if not (int) (threat / 10) == \
+                (int) (self.get_piece(pos[0], pos[1]) / 10):
+                return True
+        return False
 
 if __name__ == "__main__":
     game = Game()
